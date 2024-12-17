@@ -5,11 +5,12 @@ from git import Repo, Commit
 from subprocess import run, CalledProcessError, PIPE
 from shutil import rmtree
 
-from Understand.commands import und_create_command, und_add_command, und_analyze_command, und_metrics_command
+from src.understand.commands import und_create_command, und_add_command, und_analyze_command, und_metrics_command
 
 import glob
 import shutil
 import os
+
 
 def create_understand_project(projet_directory: str, name: str):
     """
@@ -161,7 +162,7 @@ def metrics(versions: dict, limit: int = None):
     else:
         print(f"Creating metrics output directory: {metrics_output_path}")
         makedirs(metrics_output_path)
-        
+
     if limit:
         versions = dict(list(versions.items())[:limit])
 
