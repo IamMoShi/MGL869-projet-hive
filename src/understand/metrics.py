@@ -180,12 +180,19 @@ def metrics(versions: dict, limit: int = None):
         else:
             print(f"No CSV file found for version {version} in {version_temp_path}")
 
-        # Supprimer le répertoire de la version
-        if path.exists(version_temp_path):
-            rmtree(version_temp_path)
-            print(f"Temporary repository for version {version} removed.")
+        try:
+            # Supprimer le répertoire de la version
+            if path.exists(version_temp_path):
+                rmtree(version_temp_path)
+                print(f"Temporary repository for version {version} removed.")
+        except Exception as e:
+            print(f"Error while removing temporary repository for version {version}: {e}")
 
-    # Suppression du répertoire temporaire
-    if path.exists(temp_repo_path):
-        print(f"Removing the entire temporary repository: {temp_repo_path}")
-        shutil.rmtree(temp_repo_path)
+    try:
+        # Suppression du répertoire temporaire
+        if path.exists(temp_repo_path):
+            print(f"Removing the entire temporary repository: {temp_repo_path}")
+            shutil.rmtree(temp_repo_path)
+    except Exception as e:
+        print(f"Error while removing the temporary repository: {e}")
+        return
