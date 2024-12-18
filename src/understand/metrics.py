@@ -125,7 +125,7 @@ def multi_threaded_analysis(versions: dict, num_threads: int) -> None:
                 print(f"{i}/{len(versions)} - Successfully analyzed version: {version}")
             except Exception as e:
                 print(f"Error analyzing commit {version}: {e}")
-                i += 1
+            i += 1
 
 
 def metrics(versions: dict, limit: int = None):

@@ -1,14 +1,17 @@
 import pandas as pd
 from configparser import ConfigParser
-from os import path, remove
+from os import path, remove, makedirs, listdir
 
 # Load global configuration
 config = ConfigParser()
 config.read("config.ini")
 
 base_dir = config["GENERAL"]["DataDirectory"]
-output_dir = path.join(base_dir, config["OUTPUT"]["LabeledMetricsOutputDirectory"])
+output_dir = path.join(base_dir, config["OUTPUT"]["MergedMetricsOutputDirectory"])
+labelled_dir = path.join(base_dir, config["OUTPUT"]["LabelledMetricsOutputDirectory"])
+enriched_dir = path.join(base_dir, config["OUTPUT"]["EnrichedMetricsOutputDirectory"])
 csv_separator = config["GENERAL"].get("CSVSeparatorMetrics", ",")
+
 
 def merge_all_metrics(versions):
     """
@@ -28,23 +31,31 @@ def merge_all_metrics(versions):
     if config['UNDERSTAND'].get('SkipMerge', 'No').lower() == 'yes':
         print("Merging has already been done. Skipping...")
         return
-    
+
+    if not path.exists(output_dir):
+        print(f"Creating output directory: {output_dir}")
+        makedirs(output_dir)
+    else:
+        # Remove all files in the output directory
+        for file in listdir(output_dir):
+            remove(path.join(output_dir, file))
+
     for version in versions:
         try:
             # File paths
-            labeled_file = path.join(output_dir, f"{version}_labeled_metrics.csv")
-            enrichi_file = path.join(output_dir, f"{version}_enrichi_metrics.csv")
+            labeled_file = path.join(labelled_dir, f"{version}_labeled_metrics.csv")
+            enriched_file = path.join(enriched_dir, f"{version}_enrichi_metrics.csv")
             final_file = path.join(output_dir, f"{version}_static_metrics.csv")
-            
+
             # Load the files
             labeled_metrics = pd.read_csv(labeled_file, sep=csv_separator)
-            enrichi_metrics = pd.read_csv(enrichi_file, sep=csv_separator)
-            
+            enrichi_metrics = pd.read_csv(enriched_file, sep=csv_separator)
+
             # Identify common columns (excluding 'Name' and 'FileName')
             common_columns = [
                 col for col in labeled_metrics.columns if col in enrichi_metrics.columns
             ]
-            
+
             # Merge data on "Name" (labeled) and "FileName" (enriched)
             merged_metrics = pd.merge(
                 labeled_metrics,
@@ -53,31 +64,31 @@ def merge_all_metrics(versions):
                 left_on="Name",
                 right_on="FileName"
             )
-            
+
             # Complete missing values in labeled metrics with enriched metrics
             for column in common_columns:
                 merged_metrics[column] = merged_metrics[f"{column}_x"].combine_first(
                     merged_metrics[f"{column}_y"]
                 )
-            
+
             # Keep only the original columns from labeled metrics
             final_metrics = merged_metrics[labeled_metrics.columns]
-            
+
             # Replace remaining NaN values with 0
             final_metrics = final_metrics.fillna(0)
-            
+
             # Remove the 'Kind' column if it exists
             if "Kind" in final_metrics.columns:
                 final_metrics = final_metrics.drop(columns=["Kind"])
-            
+
             # Save the final metrics file
             final_metrics.to_csv(final_file, sep=csv_separator, index=False)
-            
-            # Delete the original source files
-            remove(labeled_file)
-            remove(enrichi_file)
-            
+
+            # # Delete the original source files
+            # remove(labeled_file)
+            # remove(enriched_file)
+
             print(f"Final file generated for version {version}: {final_file}")
-        
+
         except Exception as e:
             print(f"Error processing version {version}: {e}")

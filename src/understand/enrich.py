@@ -6,7 +6,8 @@ from configparser import ConfigParser
 config = ConfigParser()
 config.read("config.ini")
 
-def enrich_metrics(couples_df: pd.DataFrame) -> None:
+
+def enrich_metrics() -> None:
     """
     Extracts metrics of all kinds except "File" and those containing "Function" in the Kind field
     and saves the results in an enrichment output directory.
@@ -16,7 +17,8 @@ def enrich_metrics(couples_df: pd.DataFrame) -> None:
     """
     base_dir = config["GENERAL"]["DataDirectory"]
     metrics_directory = path.join(base_dir, config["OUTPUT"]["MetricsOutputDirectory"])
-    output_dir = path.join(base_dir, config["OUTPUT"]["LabeledMetricsOutputDirectory"])
+    input_dir = path.join(base_dir, config["OUTPUT"]["LabelledMetricsOutputDirectory"])
+    output_dir = path.join(base_dir, config["OUTPUT"]["EnrichedMetricsOutputDirectory"])
     csv_separator = config["GENERAL"].get("CSVSeparatorMetrics", ",")
 
     if config['UNDERSTAND'].get('SkipEnrich', 'No').lower() == 'yes':
@@ -32,11 +34,13 @@ def enrich_metrics(couples_df: pd.DataFrame) -> None:
         if metrics_file.endswith(".csv"):
             process_enrichment_metrics(metrics_file, metrics_directory, output_dir, csv_separator)
 
+
 def ensure_directory_exists(directory: str) -> None:
     """Ensures the specified directory exists, creating it if necessary."""
     if not path.exists(directory):
         print(f"Creating output directory: {directory}")
         makedirs(directory)
+
 
 def extract_java_filename(name: str) -> str:
     """
@@ -50,16 +54,17 @@ def extract_java_filename(name: str) -> str:
     """
     # Split the name by '.'
     parts = name.split('.')
-    
+
     # Look for the last part that starts with an uppercase letter
     for part in reversed(parts):
         if part and part[0].isupper():  # Ensure it's not empty and starts with an uppercase letter
             return f"{part}.java"
-    
+
     # Return a default value if no match is found
     return ""
 
-def process_enrichment_metrics(metrics_file: str, metrics_directory: str, 
+
+def process_enrichment_metrics(metrics_file: str, metrics_directory: str,
                                output_dir: str, csv_separator: str) -> None:
     """
     Processes a single metrics file, aggregates metrics by FileName,
