@@ -35,11 +35,11 @@ def train_and_test_logistic_regression(directory):
 
     # Encode the target variable "Priority" (nominal classification)
     label_encoder = LabelEncoder()
-    y = label_encoder.fit_transform(merged_df['BugStatus'])
+    y = label_encoder.fit_transform(merged_df['Priority'])
 
     # Initialize KFold and Logistic Regression model
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
-    logistic_model = LogisticRegression(solver='lbfgs', max_iter=500_000_000)
+    logistic_model = LogisticRegression(solver='lbfgs', max_iter=500)
 
     # To store classification reports for each fold
     all_reports = []

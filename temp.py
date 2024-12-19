@@ -1,163 +1,30 @@
-import os
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import classification_report
+# Données sous forme brute
+data = [
+    [0, "2.0.0_full_metrics.csv", "Logistic Regression", 0.887378640776699, 0.45652173913043476, 0.9481327800829875, 0.26582278481012656],
+    [1, "2.0.0_full_metrics.csv", "Random Forest", 0.8998073217726397, 0.6428571428571429, 0.9688796680497925, 0.34177215189873417],
+    [2, "2.1.0_full_metrics.csv", "Logistic Regression", 0.9185185185185185, 0.6304347826086957, 0.9668615984405458, 0.3972602739726027],
+    [3, "2.1.0_full_metrics.csv", "Random Forest", 0.9313543599257885, 0.7659574468085106, 0.9785575048732943, 0.4931506849315068],
+    [4, "2.2.0_full_metrics.csv", "Logistic Regression", 0.9224283305227656, 0.6129032258064516, 0.9785330948121646, 0.2923076923076923],
+    [5, "2.2.0_full_metrics.csv", "Random Forest", 0.9261744966442953, 0.75, 0.9874776386404294, 0.3230769230769231],
+    [6, "2.3.0_full_metrics.csv", "Logistic Regression", 0.9968304278922345, 0.0, 0.995253164556962, 0.0],
+    [7, "2.3.0_full_metrics.csv", "Random Forest", 0.9968454258675079, 0.0, 1.0, 0.0],
+    [8, "3.0.0_full_metrics.csv", "Logistic Regression", 0.7719298245614035, 0.9408695652173913, 0.7951807228915663, 0.9327586206896552],
+    [9, "3.0.0_full_metrics.csv", "Random Forest", 0.8971428571428571, 0.9842381786339754, 0.9457831325301205, 0.9689655172413794],
+    [10, "3.1.0_full_metrics.csv", "Logistic Regression", 0.9353507565337001, 0.46153846153846156, 0.9798270893371758, 0.2033898305084746],
+    [11, "3.1.0_full_metrics.csv", "Random Forest", 0.9542302357836339, 0.8125, 0.9913544668587896, 0.4406779661016949],
+    [12, "4.0.0_full_metrics.csv", "Logistic Regression", 0.9328512396694215, 0.675, 0.9858078602620087, 0.29347826086956524],
+    [13, "4.0.0_full_metrics.csv", "Random Forest", 0.9344933469805528, 0.9032258064516129, 0.9967248908296943, 0.30434782608695654],
+]
 
-from configparser import ConfigParser
-from src.IA_models import load_data
+# Colonnes
+columns = ["ID", "File", "Algorithm", "Accuracy", "Precision", "Recall", "F1-Score"]
 
-from sklearn.model_selection import KFold
-import numpy as np
+# Création du DataFrame
+df = pd.DataFrame(data, columns=columns)
 
-from sklearn.model_selection import KFold
+# Sauvegarde dans un fichier Excel
+df.to_excel("full_metrics_data.xlsx", index=False)
 
-
-def KFold_XY(n_splits, shuffle, random_state, X, y):
-    """
-    Perform K-Fold split on the dataset and return training and testing sets.
-
-    Parameters:
-        n_splits (int): Number of folds.
-        shuffle (bool): Whether to shuffle the data before splitting.
-        random_state (int): Random state for reproducibility.
-        X (pandas.DataFrame): Features.
-        y (pandas.Series or numpy.ndarray): Target labels.
-
-    Returns:
-        tuple: X_train, X_test, y_train, y_test
-    """
-    kf = KFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
-    train_index, test_index = next(kf.split(X))  # Take the first split
-
-    # Use iloc to properly index DataFrame rows
-    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-    if isinstance(y, pd.Series):
-        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-    else:  # Assume y is a numpy array
-        y_train, y_test = y[train_index], y[test_index]
-
-    return X_train, X_test, y_train, y_test
-
-
-# Charger la configuration
-config = ConfigParser()
-config.read("config.ini")
-
-DATA_DIRECTORY = config["GENERAL"]["DataDirectory"]
-METRICS_DIRECTORY = "data/full_metrics"
-N_SPLITS = int(config["IA"]["NSplits"])
-SHUFFLE = config["IA"].getboolean("Shuffle")
-RANDOM_STATE = int(config["IA"]["RandomState"])
-
-# Charger les données
-data_dict = load_data(METRICS_DIRECTORY)
-
-# Préparer les données
-XY_dict = {}
-label_encoder = LabelEncoder()
-
-for key in data_dict.keys():
-    data: pd.DataFrame = data_dict[key]
-    X = data.drop(columns=['BugStatus', 'Name', 'BugCount', 'Priority']).dropna(axis=1)  # Independent variables
-    y_priority = data['Priority']  # Priority of the bug
-
-    # Ensure y_priority is 1D
-    if isinstance(y_priority, pd.Series):
-        y_priority_encoded = label_encoder.fit_transform(y_priority)
-    elif isinstance(y_priority, pd.DataFrame):
-        y_priority_encoded = label_encoder.fit_transform(y_priority.squeeze())
-    else:
-        y_priority_encoded = label_encoder.fit_transform(np.array(y_priority))
-
-    XY_dict[key] = (X, y_priority_encoded)
-
-# Diviser les données avec K-Fold
-XY_training_dict = {}
-XY_testing_dict = {}
-
-for key in XY_dict.keys():
-    X, y = XY_dict[key]
-    X_train, X_test, y_train, y_test = KFold_XY(N_SPLITS, SHUFFLE, RANDOM_STATE, X, y)
-    XY_training_dict[key] = (X_train, y_train)
-    XY_testing_dict[key] = (X_test, y_test)
-
-# Entraîner le modèle et évaluer les résultats
-results = []
-# Assuming XY_training_dict and XY_testing_dict are already defined
-logistic_regression_models = {}
-classification_reports = {}
-
-# Train logistic regression models
-for key in XY_training_dict:
-    X_train, y_train = XY_training_dict[key]
-    log_model = LogisticRegression(solver='lbfgs', max_iter=500)
-    log_model.fit(X_train, y_train)
-    logistic_regression_models[key] = log_model
-
-# Generate predictions and classification reports
-for key in XY_testing_dict:
-    X_test, y_test = XY_testing_dict[key]
-    y_pred = logistic_regression_models[key].predict(X_test)
-    report = classification_report(
-        y_test, y_pred, output_dict=True, zero_division=0
-    )
-    classification_reports[key] = report
-
-# Calculate precision and recall for each category and version
-precision_by_category = {category: [] for category in range(len(label_encoder.classes_))}
-recall_by_category = {category: [] for category in range(len(label_encoder.classes_))}
-
-for key, report in classification_reports.items():
-    for category in range(len(label_encoder.classes_)):
-        str_category = str(category)
-        precision_by_category[category].append(report.get(str_category, {}).get('precision', 0.0))
-        recall_by_category[category].append(report.get(str_category, {}).get('recall', 0.0))
-
-# Plot precision and recall for each category
-import matplotlib.pyplot as plt
-
-versions = list(XY_testing_dict.keys())
-
-plt.figure(figsize=(15, 10))
-for category in range(len(label_encoder.classes_)):
-    plt.plot(
-        versions, precision_by_category[category], label=f"Precision: Category {category}", marker='o'
-    )
-    plt.plot(
-        versions, recall_by_category[category], label=f"Recall: Category {category}", linestyle='--'
-    )
-
-plt.xlabel("Version")
-plt.ylabel("Score")
-plt.title("Precision and Recall by Category and Version")
-plt.xticks(rotation=45)
-plt.grid(True)
-plt.legend(
-    title="Metrics", bbox_to_anchor=(1.05, 1), loc="upper left"
-)
-plt.tight_layout()
-plt.show()
-
-# Create a DataFrame for precision and recall
-precision_df = pd.DataFrame(precision_by_category)
-recall_df = pd.DataFrame(recall_by_category)
-
-# Rename the columns to reflect the category names (optional)
-precision_df.columns = [f"Category {category}" for category in precision_df.columns]
-recall_df.columns = [f"Category {category}" for category in recall_df.columns]
-
-# Combine precision and recall DataFrames
-metrics_df = pd.concat([precision_df, recall_df], axis=1, keys=["Precision", "Recall"])
-
-# Add the version names as row indices
-metrics_df.index = versions
-
-# Display the resulting DataFrame
-print(metrics_df)
-
-# Optionally, save the DataFrame to a CSV file
-metrics_df.to_csv("precision_recall_by_category_and_version.csv")
+print("Le fichier Excel 'full_metrics_data.xlsx' a été créé avec succès.")
